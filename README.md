@@ -22,3 +22,7 @@ npm install -g edge-impulse-cli
 ```
 3. Informe usuário e senha do Edge Impulse e dê o nome `audio` ao eixo detectado.
 4. No Studio, vá em **Data acquisition**, escolha o dispositivo, defina o label e a duração e inicie a captura.
+
+<div align="center">
+  <img src="imgs/amostras.png" width="300">
+</div>
