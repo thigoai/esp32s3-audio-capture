@@ -29,6 +29,10 @@ import serial
 from serial.tools import list_ports
 from matplotlib.animation import FuncAnimation
 from matplotlib.widgets import Button, Slider
+import json
+from pathlib import Path
+
+CONFIG_FILE = Path(__file__).with_name("mic_monitor_config.json")
 
 SAMPLE_RATE = 16000
 WAVE_SECONDS = 0.5           # janela da forma de onda e do medidor de pico
@@ -169,6 +173,18 @@ def salvar_config(wav_name, params_ini, params_fim, dur, peak, n_clip, baud):
         f.write("\n".join(linhas) + "\n")
     return txt_name
 
+def carregar_config():
+    try:
+        return json.loads(CONFIG_FILE.read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+def guardar_config(hp, lp, db):
+    try:
+        CONFIG_FILE.write_text(json.dumps({"hp": hp, "lp": lp, "gain_db": db}))
+    except OSError as e:
+        print(f"[aviso] nao salvei a config: {e}")
 
 def listar_portas():
     """Retorna [(dispositivo, descricao, vid), ...] das portas seriais."""
@@ -295,11 +311,18 @@ def main():
     ap.add_argument("--port", default=None,
                     help="ex.: /dev/ttyACM1 ou COM5 (se omitido, abre uma janela)")
     ap.add_argument("--baud", type=int, default=2000000)
-    ap.add_argument("--hp", type=float, default=100.0, help="passa-alto (Hz)")
-    ap.add_argument("--lp", type=float, default=7000.0, help="passa-baixo (Hz)")
-    ap.add_argument("--gain-db", type=float, default=24.0,
-                    help="ganho em dB (24 dB = 16x, o padrao do firmware)")
+    ap.add_argument("--hp", type=float, default=None, help="passa-alto (Hz)")
+    ap.add_argument("--lp", type=float, default=None, help="passa-baixo (Hz)")
+    ap.add_argument("--gain-db", type=float, default=None, help="ganho em dB")
     args = ap.parse_args()
+
+    cfg = carregar_config()
+    if args.hp is None:
+        args.hp = cfg.get("hp", 100.0)
+    if args.lp is None:
+        args.lp = cfg.get("lp", 7000.0)
+    if args.gain_db is None:
+        args.gain_db = cfg.get("gain_db", 24.0)
 
     # Escolha da porta: --port pula a janela; se a abertura falhar, ela reaparece
     porta, baud = args.port, args.baud
@@ -461,6 +484,7 @@ def main():
     try:
         plt.show()
     finally:
+        guardar_config(*current_params())
         reader.running = False
         if reader.recording:
             reader.stop_recording("gravacao_incompleta")
